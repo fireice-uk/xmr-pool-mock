@@ -1,17 +1,27 @@
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h> 
 #include "socks.h"
 
 using namespace std;
 
+char motd[2048] = {0};
+
 SOCKET cli_sck;
 bool process_line(size_t& n, char* line, size_t lnlen)
 {
+    char buffer[1024];
     const char* rsp;
+    const char* fmt;
+
     switch(n)
     {
     case 0:
-        rsp = "{\"id\":0,\"jsonrpc\":\"2.0\",\"error\":null,\"result\":{\"id\":\"decafbad0\",\"job\":{\"blob\":\"0000000000000000000000000000000000000000000000000000000000"
-            "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\",\"job_id\":\"00000000\",\"target\":\"ffff3f00\"},\"status\":\"OK\"}}\n";
+        fmt = "{\"id\":0,\"jsonrpc\":\"2.0\",\"error\":null,\"result\":{\"id\":\"decafbad0\",\"job\":{\"blob\":\"0000000000000000000000000000000000000000000000000000000000"
+            "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\",\"job_id\":\"00000000\",\"target\":\"ffff3f00\",\"motd\":\"%s\"},"
+            "\"extensions\":[\"backend\",\"hashcount\",\"algo\",\"motd\"],\"status\":\"OK\"}}\n";
+	snprintf(buffer, sizeof(buffer), fmt, motd);
+	rsp = buffer;
         break;
     default:
         rsp = "{\"id\":1,\"jsonrpc\":\"2.0\",\"error\":null,\"result\":{\"status\":\"OK\"}}\n";
@@ -25,10 +35,29 @@ bool process_line(size_t& n, char* line, size_t lnlen)
     return true;
 }
 
+inline char hf_bin2hex(unsigned char c)
+{
+	if (c <= 0x9)
+		return '0' + c;
+	else
+		return 'a' - 0xA + c;
+}
+
+void bin2hex(const unsigned char* in, unsigned int len, char* out)
+{
+	for (unsigned int i = 0; i < len; i++)
+	{
+		out[i * 2] = hf_bin2hex((in[i] & 0xF0) >> 4);
+		out[i * 2 + 1] = hf_bin2hex(in[i] & 0x0F);
+	}
+}
+
 int main(int argc, char** argv)
 {
-    if(argc != 2)
+    if(argc != 3)
         return 0;
+
+    bin2hex((const unsigned char*)argv[2], strlen(argv[2]), motd);
 
     sockaddr_in my_addr;
 
